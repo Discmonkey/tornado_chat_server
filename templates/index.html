@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Websocket Chat</title>
+    <link rel="stylesheet" type="text/css" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+</head>
+<style>
+    .chat-window {
+        background-color:white;
+        min-height: 40px;
+    }
+</style>
+<body>
+    <div class="container" ng-app="Chat">
+        <div class="col-md-12" ng-controller="MainCtrl as $ctrl">
+            <div class="row">
+                <h1> This is a basic chat server implementation</h1>
+            </div>
+
+            <div class="row">
+                <label>
+                    Name:
+                    <input ng-model="$ctrl.name">
+                </label>
+
+                <button class="btn btn-success" ng-click="$ctrl.joinChat()">
+                    Join Chat
+                </button>
+
+            </div>
+
+            <div class="row">
+                <div class="jumbotron">
+                    <div class="row" ng-repeat="line in $ctrl.chats">
+                        <div class="col-md-12 chat-window">
+                            <p>
+                                {( line )}
+                            </p>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-11">
+                            <input type="text" ng-model="$ctrl.message" style="width:100%">
+                        </div>
+                        <div class="col-md-1">
+                            <button class="btn btn-primary" ng-click="$ctrl.sendChat()">
+                                Send
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.2.1.min.js"
+      integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4="
+      crossorigin="anonymous"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/angular.js/1.5.7/angular.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    <script src="https://cdn.rawgit.com/AngularClass/angular-websocket/v2.0.0/dist/angular-websocket.min.js"></script>
+
+    <script>
+        var app = angular.module("Chat", ['angular-websocket']);
+
+        app.config(function ($interpolateProvider) {
+            $interpolateProvider.startSymbol('{(').endSymbol(')}');
+        });
+
+        app.controller('MainCtrl', mainController);
+        app.service('chatService', chatService);
+
+        function mainController(chatService) {
+            var self = this;
+            this.name = '';
+            this.message = "";
+            this.chats = [];
+            this.isConnected = false;
+            this.socket = false;
+
+            this.joinChat = function() {
+                if (self.name.length > 0) {
+                    self.socket = chatService.createSocket();
+
+                    self.socket.onMessage(function(message) {
+                        self.chats.push(chatService.processChat(message.data));
+                    });
+
+                    self.isConnected = true;
+                }
+            };
+
+            this.sendChat = function() {
+                if (self.message.length > 0 && self.isConnected) {
+                    self.socket.send(chatService.createChat(self.name, self.message));
+                }
+                self.message = '';
+            }
+        }
+
+        function chatService($websocket) {
+
+            this.createSocket = function () {
+                return $websocket('ws://localhost:8888/chat');
+            };
+
+            this.processChat = function(data) {
+                var chatLine = JSON.parse(data);
+                return chatLine.name + ': ' + chatLine.line;
+            };
+
+            this.createChat = function(name, line) {
+                return JSON.stringify({line: line, name: name})
+            };
+
+        }
+
+    </script>
+</body>
+</html>
